@@ -7,14 +7,21 @@ if exists("g:loaded_kanban")
 endif
 "let g:loaded_kanban = 1
 let s:pomodoro_active = 0
+let s:todolist=0
+let s:ticketsize=0
+let s:title=''
+let s:startdate=0
+let s:enddate=0
+let s:time=0
+let s:starttime=0
 
 " A pomodoro item is an extension to a VimWiki todo item.
 " and loooks like this.
 " Example: * [o] [M] test bla (19/08/15,20/08/15,10)
 "             ^   ^  ^^^^^^^^  ^^^^^^^^ ^^^^^^^^ ^^
+"             |   |  |         |        |        |
 "             |   |  |         |        |        +-- Working minutes
 "             |   |  |         |        +-- End Date
-"             |   |  |         |
 "             |   |  |         +-- Start Date
 "             |   |  +-- Description
 "             |   +-- Pomodoro Ticket Size: S, M, L
@@ -80,7 +87,7 @@ endfunction
 
 function! PomodoroStart()
     if s:pomodoro_active
-        echoerr "There is already an active pomodoro: '".s:title."'"
+        "echoerr "There is already an active pomodoro: '".s:title."'"
         return 0
     endif
     if s:ParsePomodoroItem()
@@ -93,15 +100,15 @@ function! PomodoroStart()
         let line = s:PomodoroComposeLine()
         call setline(s:lineno, line)
         let s:pomodoro_active = 1
-        echo "Pomodoro started."
+        "echo "Pomodoro started."
     else
-        echoerr "No valid pomodoro found on this line."
+        "echoerr "No valid pomodoro found on this line."
     endif
 endfunction
 
 function! PomodoroStop()
     if s:pomodoro_active == 0
-        echoerr "No active pomodoro that could be stopped."
+        "echoerr "No active pomodoro that could be stopped."
         return 0
     endif
     let s:stoptime=localtime()
@@ -109,7 +116,7 @@ function! PomodoroStop()
     " convert to minutes
     let elapsed = elapsed / 60
     if elapsed > 25
-        elapsed = 25
+        let elapsed = 25
     endif
     "echo "elapsed: ".elapsed
     let s:time += elapsed
@@ -117,33 +124,54 @@ function! PomodoroStop()
     " compose new line
     let line = s:PomodoroComposeLine()
     call setline(s:lineno, line)
-    echo "Pomodoro stopped. ".elapsed." minutes have been added."
+    "echo "Pomodoro stopped. ".elapsed." minutes have been added."
 endfunction
 
+function! PomodoroCreate(...)
+    let title = "Enter title"
+    let size = "S"
+    if a:0 > 0
+        let title = a:1
+    endif
+    if a:0 > 1
+        let size = a:2
+    endif
+    let line='* [ ] ['.size.'] '.title.' (,,)'
+    call append('.', line)
+endfunction
 
-function! PomodoroInfo()
+function! g:PomodoroInfo()
+    let info = ''
     if s:pomodoro_active == 0
-        echo "Pomodoro: inactive"
-        return 0
+        return "Pomodoro: inactive"
     endif
     let stoptime=localtime()
     let elapsed = stoptime - s:starttime
     if elapsed >= 25*60
-        echo "Pomodoro: '".s:title."' (expired) - Call PomodoroStop() now."
+        let info = "Pomodoro: '".s:title."' (expired) - Call PomodoroStop() now."
     else
         " countdown
         let elapsed = 25*60 - elapsed
         " convert to minutes
         let min = elapsed / 60
         let sec = elapsed % 60
-        echo printf("Pomodoro: %s (%02u:%02u)", s:title, min, sec)
+        let info = printf("Pomodoro: %s (%02u:%02u)", s:title, min, sec)
     endif
     " ugly hack to trigger another event
-    call feedkeys("f\e")
+"    call feedkeys("f\e")
+    return info
 endfunction
 
-augroup Pomodoro
-    autocmd!
-    autocmd CursorHold * call PomodoroInfo()
-    autocmd CursorMoved * call PomodoroInfo()
-augroup end
+function! PomodoroToggle()
+    if s:pomodoro_active then
+        call PomodoroStop()
+    else
+        call PomodoroStart()
+    endif
+endfunction
+
+"augroup Pomodoro
+"    autocmd!
+"    autocmd CursorHold * call PomodoroInfo()
+"    autocmd CursorMoved * call PomodoroInfo()
+"augroup end
