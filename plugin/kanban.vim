@@ -127,6 +127,32 @@ function! PomodoroStop()
     "echo "Pomodoro stopped. ".elapsed." minutes have been added."
 endfunction
 
+function! PomodoroFinish()
+    if s:pomodoro_active == 0
+        "echoerr "No active pomodoro that could be stopped."
+        return 0
+    endif
+    let s:stoptime=localtime()
+    let elapsed = s:stoptime - s:starttime
+    " convert to minutes
+    let elapsed = elapsed / 60
+    if elapsed > 25
+        let elapsed = 25
+    endif
+    "echo "elapsed: ".elapsed
+    let s:time += elapsed
+    let s:enddate = strftime("%d/%m/%y")
+    echom s:todolist
+    let s:todolist = substitute(s:todolist, '\[ \]', '[X]', '')
+    echom s:todolist
+    let s:pomodoro_active = 0
+    " compose new line
+    let line = s:PomodoroComposeLine()
+    call setline(s:lineno, line)
+    "echo "Pomodoro stopped. ".elapsed." minutes have been added."
+    "call VimwikiToggleListItem()
+endfunction
+
 function! PomodoroCreate(...)
     let title = "Enter title"
     let size = "S"
