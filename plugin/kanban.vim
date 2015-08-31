@@ -7,6 +7,8 @@ if exists("g:loaded_kanban")
 endif
 "let g:loaded_kanban = 1
 let s:pomodoro_active = 0
+let s:pomodoro_break_active = 0
+let s:pomodoro_break_time = 5
 let s:todolist=0
 let s:ticketsize=0
 let s:title=''
@@ -51,7 +53,7 @@ let s:starttime=0
 function! s:ParsePomodoroItem()
     " use very no magic to make this more robust
     let dateregex ='\(\d\d/\d\d/\d\d\)'
-    let regex = '\V\( \** [\[ .oOX]]\) [\(\[ SML]\)] \(\[A-Za-z0-9_ ]\+\) ('.dateregex.'\?,'.dateregex.'\?,\(\d\*\))'
+    let regex = '\V\( \** [\[ .oOX]]\) [\(\[ SML]\)] \(\[A-Za-z0-9_ :.,]\+\) ('.dateregex.'\?,'.dateregex.'\?,\(\d\*\))'
     let s:lineno = line('.')
     let line=getline(s:lineno)
     "echo "regex=".regex
@@ -85,6 +87,8 @@ function! s:PomodoroComposeLine()
     return line
 endfunction
 
+" This starts a new pomodoro if there is not already an active one.
+" This will cancel any break and avoids explicit stopping of breaks.
 function! PomodoroStart()
     if s:pomodoro_active
         "echoerr "There is already an active pomodoro: '".s:title."'"
@@ -100,16 +104,23 @@ function! PomodoroStart()
         let line = s:PomodoroComposeLine()
         call setline(s:lineno, line)
         let s:pomodoro_active = 1
+        let s:pomodoro_break_active = 0
         "echo "Pomodoro started."
     else
         "echoerr "No valid pomodoro found on this line."
     endif
 endfunction
 
+" Stops an active pomodoro or break.
+" If a pomodoro was stopped this will upate the work time.
 function! PomodoroStop()
+    if s:pomodoro_break_active
+        let s:pomodoro_break_active = 0
+        return
+    endif
     if s:pomodoro_active == 0
         "echoerr "No active pomodoro that could be stopped."
-        return 0
+        return
     endif
     let s:stoptime=localtime()
     let elapsed = s:stoptime - s:starttime
@@ -127,6 +138,10 @@ function! PomodoroStop()
     "echo "Pomodoro stopped. ".elapsed." minutes have been added."
 endfunction
 
+" This finishes a pomodoro.
+" This works like PomodorStop() but will in addition also update
+" the enddate and mark this pomodoro as done by checking the checkbox
+" of the VimWiki todo item.
 function! PomodoroFinish()
     if s:pomodoro_active == 0
         "echoerr "No active pomodoro that could be stopped."
@@ -153,6 +168,23 @@ function! PomodoroFinish()
     "call VimwikiToggleListItem()
 endfunction
 
+" This starts a short break countdown.
+function! PomodoroBreak()
+    let s:title = "Short break"
+    let s:pomodoro_break_time = 5
+    let s:starttime=localtime()
+    let s:pomodoro_break_active = 1
+endfunction
+
+" This starts a long break countdown.
+function! PomodoroLongBreak()
+    let s:title = "Short break"
+    let s:pomodoro_break_time = 15
+    let s:starttime=localtime()
+    let s:pomodoro_break_active = 1
+endfunction
+
+" This creates a pomodoro item.
 function! PomodoroCreate(...)
     let title = "Enter title"
     let size = "S"
@@ -166,35 +198,55 @@ function! PomodoroCreate(...)
     call append('.', line)
 endfunction
 
+" This functions returns information about active pomdoros or breaks.
+" This is used by the vim-airline plugin to display the pomodoro status.
 function! g:PomodoroInfo()
     let info = ''
-    if s:pomodoro_active == 0
+    if s:pomodoro_active == 0 && s:pomodoro_break_active == 0
         return "Pomodoro: inactive"
     endif
     let stoptime=localtime()
     let elapsed = stoptime - s:starttime
-    if elapsed >= 25*60
-        let info = "Pomodoro: '".s:title."' (expired) - Call PomodoroStop() now."
+    if s:pomodoro_active
+        " return pomodoro info
+        if elapsed >= 25*60
+            let info = "Pomodoro: '".s:title."' (expired) - Call PomodoroStop() now."
+        else
+            " countdown
+            let elapsed = 25*60 - elapsed
+            " convert to minutes
+            let min = elapsed / 60
+            let sec = elapsed % 60
+            let info = printf("Pomodoro: %s (%02u:%02u)", s:title, min, sec)
+        endif
     else
-        " countdown
-        let elapsed = 25*60 - elapsed
-        " convert to minutes
-        let min = elapsed / 60
-        let sec = elapsed % 60
-        let info = printf("Pomodoro: %s (%02u:%02u)", s:title, min, sec)
+        " return pomodoro break info
+        if elapsed >= s:pomodoro_break_time*60
+            let info "Pomodoro: Break is over. Time for another pomodoro!"
+        else
+            " countdown
+            let elapsed = s:pomodoro_break_time*60 - elapsed
+            " convert to minutes
+            let min = elapsed / 60
+            let sec = elapsed % 60
+            let info = printf("Pomodoro: %s (%02u:%02u)", s:title, min, sec)
+        endif
     endif
-    " ugly hack to trigger another event
-"    call feedkeys("f\e")
     return info
 endfunction
 
+" Simple function for toggling pomodoro running/stopped states.
+" This can be mapped to any key to simplify starting and stopping of
+" pomodoros.
 function! PomodoroToggle()
-    if s:pomodoro_active then
+    if s:pomodoro_active
         call PomodoroStop()
     else
         call PomodoroStart()
     endif
 endfunction
+
+nmap <leader><space> :call PomodoroToggle()<cr>
 
 "augroup Pomodoro
 "    autocmd!
