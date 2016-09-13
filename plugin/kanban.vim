@@ -16,6 +16,7 @@ let s:startdate=0
 let s:enddate=0
 let s:time=0
 let s:starttime=0
+let s:filename=""
 let s:lineno=0
 
 " A pomodoro item is an extension to a VimWiki todo item.
@@ -55,6 +56,7 @@ function! s:ParsePomodoroItem()
     " use very no magic to make this more robust
     let dateregex ='\(\d\d/\d\d/\d\d\)'
     let regex = '\V\( \** [\[ .oOX]]\) [\(\[ SML]\)] \(\[A-Za-z0-9_ÖÄÜöäüß :.,]\+\) ('.dateregex.'\?,'.dateregex.'\?,\(\d\*\))'
+    let s:filename = expand('%:p')
     let s:lineno = line('.')
     let line=getline(s:lineno)
     "echo "regex=".regex
@@ -255,7 +257,10 @@ function! PomodoroCleanup()
     " stop an pomodore if active,
     " this way the used time does not get lost
     if s:pomodoro_active
+        " swich back to buffer with pomodoro item
+        execute ":edit ".s:filename
         call PomodoroStop()
+        execute ":w"
     endif
 endfunction
 
