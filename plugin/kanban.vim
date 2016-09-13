@@ -53,7 +53,7 @@ let s:starttime=0
 function! s:ParsePomodoroItem()
     " use very no magic to make this more robust
     let dateregex ='\(\d\d/\d\d/\d\d\)'
-    let regex = '\V\( \** [\[ .oOX]]\) [\(\[ SML]\)] \(\[A-Za-z0-9_ :.,]\+\) ('.dateregex.'\?,'.dateregex.'\?,\(\d\*\))'
+    let regex = '\V\( \** [\[ .oOX]]\) [\(\[ SML]\)] \(\[A-Za-z0-9_ÖÄÜöäüß :.,]\+\) ('.dateregex.'\?,'.dateregex.'\?,\(\d\*\))'
     let s:lineno = line('.')
     let line=getline(s:lineno)
     "echo "regex=".regex
