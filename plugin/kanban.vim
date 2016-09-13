@@ -16,6 +16,7 @@ let s:startdate=0
 let s:enddate=0
 let s:time=0
 let s:starttime=0
+let s:lineno=0
 
 " A pomodoro item is an extension to a VimWiki todo item.
 " and loooks like this.
@@ -248,8 +249,17 @@ endfunction
 
 nmap <leader><space> :call PomodoroToggle()<cr>
 
-"augroup Pomodoro
-"    autocmd!
-"    autocmd CursorHold * call PomodoroInfo()
-"    autocmd CursorMoved * call PomodoroInfo()
-"augroup end
+"let tempTimer = timer_start(1000, function('g:PomodoroInfo'),  {'repeat': -1})
+
+function! PomodoroCleanup()
+    " stop an pomodore if active,
+    " this way the used time does not get lost
+    if s:pomodoro_active
+        call PomodoroStop()
+    endif
+endfunction
+
+augroup Pomodoro
+    autocmd!
+    autocmd VimLeavePre * call PomodoroCleanup()
+augroup end
